@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Local Luminet runtime state
+logs/
+backups/
+certs/
+config/lockdown_state.json
+config/known_devices.json
+
+# Private deployment config, environment files, and generated secrets
+.env
+.env.*
+!.env.example
+config/hotspot.json
+!config/hotspot.example.json
+config/hotspot.local.json
+config/*.local.json
+*.key
+*.crt
+*.pem
+*.p12
+*.pfx
+*.mobileconfig
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Editors
+.idea/
+.vscode/

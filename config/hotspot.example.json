@@ -1,0 +1,132 @@
+{
+  "active_network": "main",
+  "project_status": "Example config for open-source use. Copy to config/hotspot.json and customize locally.",
+  "status_updated": "2026-05-30",
+  "wifi_interface": "en1",
+  "source_mode": "interface",
+  "loopback": {
+    "interface": "lo0",
+    "ip": "192.168.42.1",
+    "netmask": "255.255.255.0",
+    "cidr": "192.168.42.1/24"
+  },
+  "upstream_interface": "en0",
+  "subnet": "192.168.77.0/24",
+  "gateway_hint": "192.168.77.1",
+  "security": "WPA2/WPA3 Personal",
+  "internet_optional": true,
+  "notifications": {
+    "enabled": false
+  },
+  "monitoring": {
+    "interval_seconds": 5,
+    "vendor_lookup": true,
+    "log_new_devices": true
+  },
+  "guest": {
+    "enabled": true,
+    "ssid": "Luminet-Guest",
+    "password": "CHANGE_ME_GENERATE_WITH_BIN_HOTSPOT_ROTATE_PASSWORD",
+    "isolation_requested": true,
+    "subnet": "192.168.78.0/24",
+    "gateway_hint": "192.168.78.1"
+  },
+  "main": {
+    "ssid": "Luminet",
+    "password": "CHANGE_ME_GENERATE_WITH_BIN_HOTSPOT_ROTATE_PASSWORD",
+    "isolation_requested": false,
+    "subnet": "192.168.77.0/24",
+    "gateway_hint": "192.168.77.1"
+  },
+  "notes": "Interface source mode is active for Luminet Internet Sharing validation, sharing from upstream interface en0 to Wi-Fi en1. Loopback mode remains available for local-only LAN tests. macOS Internet Sharing can broadcast only one SSID at a time; Main and Guest are switchable profiles, not simultaneous networks.",
+  "firewall": {
+    "enabled": true,
+    "pf_anchor": "com.luminet.hotspot",
+    "anchor_file": "/etc/pf.anchors/luminet_guest",
+    "block_rfc1918": true,
+    "block_private_ranges": [
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "169.254.0.0/16"
+    ],
+    "extra_block_cidrs": [
+      "100.64.0.0/10",
+      "127.0.0.0/8",
+      "224.0.0.0/4",
+      "240.0.0.0/4"
+    ],
+    "apply_automatically_for_guest_start": true,
+    "strict_guest_isolation": true,
+    "block_common_attacker_ports": [
+      "22",
+      "23",
+      "25",
+      "110",
+      "111",
+      "135",
+      "137:139",
+      "143",
+      "389",
+      "445",
+      "548",
+      "5900",
+      "593",
+      "1433",
+      "1521",
+      "2049",
+      "2375:2376",
+      "3000:3001",
+      "3306",
+      "3389",
+      "5000",
+      "5432",
+      "5601",
+      "5672",
+      "6379",
+      "7000:9000",
+      "9200",
+      "9300",
+      "11211",
+      "27017"
+    ]
+  },
+  "dashboard": {
+    "enabled": true,
+    "host": "192.168.42.1",
+    "fallback_host": "127.0.0.1",
+    "port": 8080,
+    "username": "luminet",
+    "local_only": true,
+    "allow_real_controls": false,
+    "rate_limit": {
+      "window_seconds": 60,
+      "max_requests": 90,
+      "max_failed_logins": 5,
+      "lockout_seconds": 300
+    },
+    "session_timeout_seconds": 300,
+    "https": {
+      "enabled": false,
+      "cert_file": "/Users/brandonsandoval/Projects/local-hotspot/certs/dashboard.crt",
+      "key_file": "/Users/brandonsandoval/Projects/local-hotspot/certs/dashboard.key"
+    },
+    "password_hash": "pbkdf2_sha256$ITERATIONS$SALT$DIGEST_REPLACE_LOCALLY"
+  },
+  "security_hardening": {
+    "paranoid_mode": false,
+    "auto_block_unknown_devices": false,
+    "auto_shutdown_on_serious_anomaly": false,
+    "alert_on_new_unknown_devices": true,
+    "blocked_devices": [],
+    "blocked_ips": [],
+    "max_unknown_devices": 2,
+    "guest_strict_web_only": true,
+    "guest_allow_dns": true,
+    "guest_allow_dhcp": true,
+    "guest_allow_http_https": true,
+    "last_security_review": "2026-05-30"
+  },
+  "project_name": "Luminet",
+  "project_description": "AI-Powered Local-First WiFi Management System"
+}

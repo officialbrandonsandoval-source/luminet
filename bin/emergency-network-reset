@@ -1,0 +1,204 @@
+#!/bin/zsh
+set -euo pipefail
+
+PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -n "${SUDO_ASKPASS:-}" && ! -t 0 ]]; then
+  SUDO=(/usr/bin/sudo -A)
+else
+  SUDO=(/usr/bin/sudo)
+fi
+CONFIG="$PROJECT_DIR/config/hotspot.json"
+CONFIRM=""
+APPLY=0
+RESTORE_NAT=0
+
+usage() {
+  cat <<'EOF'
+Emergency network reset for Luminet.
+
+Default is dry-run only.
+
+Usage:
+  ./bin/emergency-network-reset
+  ./bin/emergency-network-reset --apply --confirm RESET
+  ./bin/emergency-network-reset --apply --confirm RESET --restore-nat-latest
+
+Actions when applied:
+  1. Stop macOS Internet Sharing if loaded.
+  2. Flush managed pf anchor com.luminet.hotspot.
+  3. If source_mode=loopback: remove loopback alias from lo0.
+     If source_mode=interface: clean any stale loopback alias.
+  4. Disable Lockdown Mode if active (restore macOS services, set paranoid=off).
+  5. Remove the managed NAT plist when it matches this hotspot config, or
+     optionally restore latest backup.
+  6. Print final status.
+
+This does NOT delete Wi-Fi passwords or change your normal Wi-Fi network.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apply) APPLY=1; shift ;;
+    --confirm) CONFIRM="${2:-}"; shift 2 ;;
+    --restore-nat-latest) RESTORE_NAT=1; shift ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown arg: $1" >&2; usage; exit 2 ;;
+  esac
+done
+
+if [[ ! -f "$CONFIG" ]]; then
+  echo "Missing config: $CONFIG" >&2
+  exit 1
+fi
+
+CFG_VALUES=$(CONFIG_PATH="$CONFIG" /usr/bin/python3 - <<'PY'
+import json, os
+cfg=json.load(open(os.environ['CONFIG_PATH']))
+print(cfg.get('loopback',{}).get('interface','lo0'))
+print(cfg.get('loopback',{}).get('ip','192.168.42.1'))
+print(cfg.get('source_mode') or 'interface')
+print(cfg.get('upstream_interface') or 'en0')
+print(cfg.get('wifi_interface') or 'en1')
+active=cfg.get('active_network') or 'main'
+profile=cfg.get(active, {}) if active in ('main','guest') else cfg.get('main', {})
+print(profile.get('ssid') or cfg.get('ssid') or 'Luminet')
+PY
+)
+LO_IF=$(printf '%s\n' "$CFG_VALUES" | /usr/bin/sed -n '1p')
+LO_IP=$(printf '%s\n' "$CFG_VALUES" | /usr/bin/sed -n '2p')
+SOURCE_MODE=$(printf '%s\n' "$CFG_VALUES" | /usr/bin/sed -n '3p')
+UPSTREAM_IF=$(printf '%s\n' "$CFG_VALUES" | /usr/bin/sed -n '4p')
+WIFI_IF=$(printf '%s\n' "$CFG_VALUES" | /usr/bin/sed -n '5p')
+ACTIVE_SSID=$(printf '%s\n' "$CFG_VALUES" | /usr/bin/sed -n '6p')
+ANCHOR="com.luminet.hotspot"
+LEGACY_ANCHOR="com.maximus.hotspot"
+NAT_PLIST="/Library/Preferences/SystemConfiguration/com.apple.nat.plist"
+LATEST_NAT_BACKUP=""
+if [[ -d "$PROJECT_DIR/backups" ]]; then
+  LATEST_NAT_BACKUP=$(/usr/bin/find "$PROJECT_DIR/backups" -maxdepth 1 -type f -name 'com.apple.nat.plist.*.bak' -print0 2>/dev/null | /usr/bin/xargs -0 ls -t 2>/dev/null | /usr/bin/head -1 || true)
+fi
+
+if [[ "$APPLY" != "1" ]]; then
+  cat <<EOF
+DRY RUN: emergency network reset would run:
+  current source_mode: $SOURCE_MODE
+  upstream interface: $UPSTREAM_IF
+  sudo launchctl bootout system/com.apple.InternetSharing
+  sudo pfctl -a $ANCHOR -F rules
+  sudo pfctl -a $LEGACY_ANCHOR -F rules  # legacy pre-rebrand anchor cleanup
+  check $LO_IF for managed loopback alias $LO_IP and remove it only if present
+  disable lockdown mode if active (restore macOS services)
+  if --restore-nat-latest is not supplied: remove $NAT_PLIST only when it matches this managed config ($ACTIVE_SSID, $UPSTREAM_IF -> $WIFI_IF)
+EOF
+  if [[ "$RESTORE_NAT" == "1" ]]; then
+    if [[ -n "$LATEST_NAT_BACKUP" ]]; then
+      echo "  sudo cp $LATEST_NAT_BACKUP $NAT_PLIST"
+      echo "  sudo chown root:wheel $NAT_PLIST && sudo chmod 644 $NAT_PLIST"
+    else
+      echo "  restore requested, but no NAT plist backup found under $PROJECT_DIR/backups"
+    fi
+  fi
+  echo "Run with --apply --confirm RESET to execute."
+  exit 0
+fi
+
+if [[ "$CONFIRM" != "RESET" ]]; then
+  echo "Refusing to continue. Re-run with --apply --confirm RESET" >&2
+  exit 2
+fi
+
+mkdir -p "$PROJECT_DIR/logs"
+LOG="$PROJECT_DIR/logs/emergency-reset.$(/bin/date +%Y%m%d-%H%M%S).log"
+exec > >(tee -a "$LOG") 2>&1
+
+echo "Emergency reset started: $(/bin/date '+%Y-%m-%dT%H:%M:%S%z')"
+echo "Log: $LOG"
+echo "Configured source mode: $SOURCE_MODE"
+echo "Configured upstream interface: $UPSTREAM_IF"
+
+# --- Step 1: Stop Internet Sharing ---
+echo "Stopping Internet Sharing if loaded..."
+${SUDO} /bin/launchctl bootout system/com.apple.InternetSharing || true
+
+# --- Step 2: Flush pf anchor ---
+echo "Flushing managed pf anchor: $ANCHOR"
+${SUDO} /sbin/pfctl -a "$ANCHOR" -F rules || true
+echo "Flushing legacy pre-rebrand pf anchor if present: $LEGACY_ANCHOR"
+${SUDO} /sbin/pfctl -a "$LEGACY_ANCHOR" -F rules || true
+
+# --- Step 3: Handle loopback alias ---
+if [[ "$SOURCE_MODE" == "loopback" ]]; then
+  echo "Source mode is loopback; checking for managed alias $LO_IP on $LO_IF..."
+  if /sbin/ifconfig "$LO_IF" | /usr/bin/grep -q "$LO_IP"; then
+    echo "Removing loopback alias..."
+    ${SUDO} /sbin/ifconfig "$LO_IF" -alias "$LO_IP" || true
+  else
+    echo "Loopback alias not present."
+  fi
+else
+  echo "Source mode is interface; checking for stale loopback alias..."
+  if /sbin/ifconfig "$LO_IF" | /usr/bin/grep -q "$LO_IP"; then
+    echo "Found stale loopback alias $LO_IP on $LO_IF; removing..."
+    ${SUDO} /sbin/ifconfig "$LO_IF" -alias "$LO_IP" || true
+  else
+    echo "No loopback alias present. Clean."
+  fi
+fi
+
+# --- Step 4: Disable Lockdown Mode if active ---
+LOCKDOWN_STATE="$PROJECT_DIR/config/lockdown_state.json"
+echo "Checking lockdown state..."
+if [[ -f "$LOCKDOWN_STATE" ]]; then
+  echo "Lockdown state file found. Disabling lockdown (restoring macOS services, setting paranoid=off)..."
+  "$PROJECT_DIR/bin/hotspot" lockdown disable || true
+else
+  echo "No lockdown state file found. Skipping lockdown restore."
+fi
+
+# --- Step 5: NAT plist cleanup or restore ---
+if [[ "$RESTORE_NAT" == "1" ]]; then
+  if [[ -n "$LATEST_NAT_BACKUP" && -f "$LATEST_NAT_BACKUP" ]]; then
+    echo "Restoring latest NAT plist backup: $LATEST_NAT_BACKUP"
+    ${SUDO} /bin/cp "$LATEST_NAT_BACKUP" "$NAT_PLIST"
+    ${SUDO} /usr/sbin/chown root:wheel "$NAT_PLIST"
+    ${SUDO} /bin/chmod 644 "$NAT_PLIST"
+  else
+    echo "No NAT plist backup found. Skipping restore."
+  fi
+else
+  echo "Checking NAT plist ownership before cleanup..."
+  if [[ -f "$NAT_PLIST" ]]; then
+    if NAT_PLIST="$NAT_PLIST" UPSTREAM_IF="$UPSTREAM_IF" WIFI_IF="$WIFI_IF" ACTIVE_SSID="$ACTIVE_SSID" /usr/bin/python3 - <<'PY'
+import os, plistlib, sys
+path=os.environ['NAT_PLIST']
+try:
+    with open(path, 'rb') as f:
+        data=plistlib.load(f)
+except Exception:
+    sys.exit(1)
+nat=data.get('NAT', {})
+air=data.get('AirPort', {})
+managed = (
+    nat.get('PrimaryInterface') == os.environ['UPSTREAM_IF'] and
+    os.environ['WIFI_IF'] in nat.get('SharingDevices', []) and
+    air.get('NetworkName') == os.environ['ACTIVE_SSID']
+)
+sys.exit(0 if managed else 1)
+PY
+    then
+      echo "Removing managed NAT plist for $ACTIVE_SSID ($UPSTREAM_IF -> $WIFI_IF)."
+      ${SUDO} /bin/rm -f "$NAT_PLIST"
+    else
+      echo "NAT plist exists but does not match this managed hotspot config. Leaving it untouched."
+    fi
+  else
+    echo "NAT plist not present."
+  fi
+fi
+
+# --- Step 6: Final status ---
+echo "Final hotspot status:"
+"$PROJECT_DIR/bin/hotspot" status || true
+
+echo "Emergency reset completed: $(/bin/date '+%Y-%m-%dT%H:%M:%S%z')"

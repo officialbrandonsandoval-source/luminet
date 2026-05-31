@@ -1,0 +1,3 @@
+#!/bin/zsh
+# macOS sudo askpass helper. Does not store the password.
+/usr/bin/osascript -e 'Tell application "System Events" to display dialog "Luminet needs administrator permission for local WiFi management." default answer "" with hidden answer buttons {"Cancel", "OK"} default button "OK"' -e 'text returned of result'

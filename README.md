@@ -89,7 +89,7 @@ Screenshots are intentionally placeholders until the first public release assets
 ### Clone
 
 ```bash
-git clone https://github.com/your-org/luminet.git
+git clone https://github.com/officialbrandonsandoval-source/luminet.git
 cd luminet
 ```
 

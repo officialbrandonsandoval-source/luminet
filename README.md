@@ -41,6 +41,21 @@ Luminet is not trying to be an enterprise access point. It is a practical contro
 - Dependency-light local dashboard with form login, signed sessions, timeout, rate limiting, failed-login lockout, and auth logging
 - Safe dashboard switch buttons that stage config only and do not silently mutate live networking
 
+## Quick Start
+
+```bash
+git clone https://github.com/officialbrandonsandoval-source/luminet.git
+cd luminet
+./bin/install
+./bin/hotspot status
+./bin/hotspot security status
+./bin/hotspot guest test
+```
+
+The installer is conservative by design. It creates local config from the example file, sets permissions, validates syntax, and leaves live networking untouched.
+
+Read the full first-time setup guide: [`docs/getting-started.md`](docs/getting-started.md).
+
 ## Screenshots
 
 Screenshots are intentionally placeholders until the first public release assets are captured.
@@ -66,6 +81,7 @@ Screenshots are intentionally placeholders until the first public release assets
 ```text
 .
 ├── bin/
+│   ├── install                    # conservative local bootstrap
 │   ├── hotspot                    # CLI wrapper
 │   ├── emergency-network-reset    # gated recovery command
 │   └── sudo-askpass               # macOS sudo prompt helper
@@ -90,24 +106,27 @@ Screenshots are intentionally placeholders until the first public release assets
 - Administrator access for live network changes
 - WiFi hardware capable of macOS Internet Sharing
 
-### Clone
+### Clone and bootstrap
 
 ```bash
 git clone https://github.com/officialbrandonsandoval-source/luminet.git
 cd luminet
+./bin/install
 ```
 
 ### Prepare config
 
-The real runtime config can contain WiFi passwords, dashboard hashes, known interfaces, and local paths. It is intentionally ignored by git. Start from the sanitized example:
+`./bin/install` creates `config/hotspot.json` from the sanitized example if it does not already exist. The real runtime config can contain WiFi passwords, dashboard hashes, known interfaces, and local paths. It is intentionally ignored by git.
+
+If you prefer manual setup:
 
 ```bash
 cp config/hotspot.example.json config/hotspot.json
 chmod 600 config/hotspot.json
-chmod +x bin/hotspot bin/emergency-network-reset bin/sudo-askpass
+chmod +x bin/install bin/hotspot bin/emergency-network-reset bin/sudo-askpass
 ```
 
-Then edit `config/hotspot.json` for your interfaces and rotate local passwords before live use.
+Then edit `config/hotspot.json` for your interfaces and rotate local passwords before live use. See [`docs/getting-started.md`](docs/getting-started.md) for the safest first-run path.
 
 ### Check the plan
 

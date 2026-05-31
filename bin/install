@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONFIG_DIR="$PROJECT_DIR/config"
+CONFIG_FILE="$CONFIG_DIR/hotspot.json"
+EXAMPLE_FILE="$CONFIG_DIR/hotspot.example.json"
+ASKPASS_FILE="$PROJECT_DIR/bin/sudo-askpass"
+
+printf 'Luminet installer\n'
+printf '=================\n\n'
+
+if [[ "$(uname -s)" != "Darwin" ]]; then
+  printf 'ERROR: Luminet currently targets macOS because it manages macOS Internet Sharing.\n' >&2
+  exit 1
+fi
+
+if ! command -v /usr/bin/python3 >/dev/null 2>&1; then
+  printf 'ERROR: /usr/bin/python3 was not found. Install Xcode Command Line Tools and retry.\n' >&2
+  printf 'Try: xcode-select --install\n' >&2
+  exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+printf 'Project directory: %s\n' "$PROJECT_DIR"
+printf 'Python: %s\n' "$(/usr/bin/python3 --version 2>&1)"
+
+mkdir -p "$CONFIG_DIR" "$PROJECT_DIR/logs" "$PROJECT_DIR/backups" "$PROJECT_DIR/certs" "$PROJECT_DIR/docs/screenshots"
+
+chmod +x "$PROJECT_DIR/bin/hotspot" \
+  "$PROJECT_DIR/bin/hotspot-dashboard" \
+  "$PROJECT_DIR/bin/hotspot-nl" \
+  "$PROJECT_DIR/bin/emergency-network-reset" \
+  "$PROJECT_DIR/bin/reset-network" \
+  "$ASKPASS_FILE" 2>/dev/null || true
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  if [[ ! -f "$EXAMPLE_FILE" ]]; then
+    printf 'ERROR: missing %s\n' "$EXAMPLE_FILE" >&2
+    exit 1
+  fi
+  cp "$EXAMPLE_FILE" "$CONFIG_FILE"
+  chmod 600 "$CONFIG_FILE"
+  printf 'Created local config: config/hotspot.json\n'
+else
+  chmod 600 "$CONFIG_FILE"
+  printf 'Existing local config preserved: config/hotspot.json\n'
+fi
+
+printf '\nValidating files...\n'
+/usr/bin/python3 -m py_compile "$PROJECT_DIR/scripts/hotspot.py" "$PROJECT_DIR/scripts/dashboard.py" "$PROJECT_DIR/scripts/hotspot_nl.py"
+/usr/bin/python3 -m json.tool "$CONFIG_FILE" >/dev/null
+/usr/bin/python3 -m json.tool "$EXAMPLE_FILE" >/dev/null
+
+printf '\nLuminet is installed locally.\n\n'
+printf 'Next safe commands:\n'
+printf '  ./bin/hotspot status\n'
+printf '  ./bin/hotspot interfaces\n'
+printf '  ./bin/hotspot security status\n'
+printf '  ./bin/hotspot guest test\n\n'
+printf 'Before live use:\n'
+printf '  1. Edit config/hotspot.json for your Mac interfaces and SSIDs.\n'
+printf '  2. Rotate generated local passwords.\n'
+printf '  3. Review docs/getting-started.md.\n\n'
+printf 'Live network changes require explicit confirmation tokens and are not run by this installer.\n'

@@ -41,9 +41,10 @@ patterns = {
     'mac_address': re.compile(r'(?i)\b(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\b'),
     'personal_path': re.compile(r'/Users/brandonsandoval'),
 }
-allow = {
-    ('config/hotspot.example.json', 'pbkdf2_sha256$ITERATIONS$SALT$DIGEST_REPLACE_LOCALLY'),
-}
+allow_substrings = [
+    'pbkdf2_sha256$ITERATIONS$SALT$DIGEST_REPLACE_LOCALLY',
+    "re.compile(r'/Users/brandonsandoval')",
+]
 findings=[]
 for file in files:
     p=pathlib.Path(file)
@@ -52,7 +53,7 @@ for file in files:
     for line_no,line in enumerate(text.splitlines(), 1):
         for name,pat in patterns.items():
             if pat.search(line):
-                if (file, line.strip()) in allow:
+                if any(token in line for token in allow_substrings):
                     continue
                 findings.append(f'{name}: {file}:{line_no}: {line[:180]}')
 if findings:

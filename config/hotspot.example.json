@@ -108,8 +108,8 @@
     "session_timeout_seconds": 300,
     "https": {
       "enabled": false,
-      "cert_file": "/Users/brandonsandoval/Projects/local-hotspot/certs/dashboard.crt",
-      "key_file": "/Users/brandonsandoval/Projects/local-hotspot/certs/dashboard.key"
+      "cert_file": "certs/dashboard.crt",
+      "key_file": "certs/dashboard.key"
     },
     "password_hash": "pbkdf2_sha256$ITERATIONS$SALT$DIGEST_REPLACE_LOCALLY"
   },

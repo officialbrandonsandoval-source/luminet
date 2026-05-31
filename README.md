@@ -1,10 +1,14 @@
 # Luminet
 
-> AI-Powered Local-First WiFi Management System for macOS.
+> AI-Powered Local-First WiFi Management for macOS.
 
-Luminet turns a Mac into a controlled, observable, local-first WiFi management layer. It wraps macOS Internet Sharing with safer commands, hardened guest-mode planning, local device visibility, password rotation, security posture checks, and a protected dashboard.
+Luminet turns a Mac into a controlled, observable WiFi management layer. It wraps macOS Internet Sharing with safer commands, Main/Guest profile switching, hardened guest-mode planning, local device visibility, password rotation, security posture checks, and a protected real-time dashboard.
 
 It is built for people who want local infrastructure they can understand, inspect, and recover without depending on a cloud router dashboard.
+
+## Current Status
+
+Luminet is in active development. The core CLI, profile switching, dashboard, dry-run planning, security checks, and emergency reset flow are available now. Live network behavior still depends on macOS Internet Sharing, so every real network mutation is intentionally gated behind explicit confirmation commands.
 
 ## Why Luminet
 
@@ -93,12 +97,6 @@ git clone https://github.com/officialbrandonsandoval-source/luminet.git
 cd luminet
 ```
 
-If you are working from the current local project path:
-
-```bash
-cd /Users/brandonsandoval/Projects/local-hotspot
-```
-
 ### Prepare config
 
 The real runtime config can contain WiFi passwords, dashboard hashes, known interfaces, and local paths. It is intentionally ignored by git. Start from the sanitized example:
@@ -141,8 +139,8 @@ This stages config only. It does not apply NAT, load firewall rules, or restart 
 To apply the staged profile live from this local project, use the explicit confirmation flow:
 
 ```bash
-SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot configure --apply --confirm CONFIGURE
-SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot start --apply --confirm ENABLE
+SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot configure --apply --confirm CONFIGURE
+SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot start --apply --confirm ENABLE
 ```
 
 For Guest mode, review and apply the firewall separately:
@@ -150,7 +148,7 @@ For Guest mode, review and apply the firewall separately:
 ```bash
 ./bin/hotspot guest test
 ./bin/hotspot firewall plan
-SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot firewall apply --apply --confirm FIREWALL
+SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot firewall apply --apply --confirm FIREWALL
 ```
 
 ### Open System Settings fallback
@@ -187,7 +185,7 @@ Dry-run first:
 Apply only when you intentionally want recovery:
 
 ```bash
-SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/emergency-network-reset --apply --confirm RESET
+SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/emergency-network-reset --apply --confirm RESET
 ```
 
 ## Local-first philosophy

@@ -235,7 +235,7 @@ This does not automatically switch to Guest Mode and does not apply live firewal
 Recommended maximum-security sequence after approval:
 
 ```bash
-cd /Users/brandonsandoval/Projects/local-hotspot
+cd luminet
 ./bin/hotspot security learn-devices
 ./bin/hotspot rotate-password guest --length 32 --show
 ./bin/hotspot security paranoid enable

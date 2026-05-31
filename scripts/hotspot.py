@@ -487,7 +487,7 @@ def build_pf_rules(cfg):
     blocked_ips = sec.get("blocked_ips", [])
     lines = [
         "# Luminet HARDENED guest isolation anchor",
-        "# Managed by /Users/brandonsandoval/Projects/local-hotspot/bin/hotspot firewall",
+        "# Managed by Luminet hotspot firewall",
         "# Policy: guest clients get DHCP + DNS + public web only. No Mac access. No private LAN access.",
         f"guest_net = \"{guest_subnet}\"",
         f"guest_gw = \"{guest_gw}\"",
@@ -1282,13 +1282,13 @@ def switch_profile(target):
     print_one_ssid_warning()
     print("")
     print("This changed project config only. To apply it to macOS Internet Sharing:")
-    print("  1. SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot configure --apply --confirm CONFIGURE")
+    print('  1. SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot configure --apply --confirm CONFIGURE')
     if target == "guest":
-        print("  2. SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot firewall apply --apply --confirm FIREWALL")
-        print("  3. SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot start --apply --confirm ENABLE")
+        print('  2. SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot firewall apply --apply --confirm FIREWALL')
+        print('  3. SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot start --apply --confirm ENABLE')
     else:
-        print("  2. Optional: SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot firewall remove --apply --confirm FIREWALL_REMOVE")
-        print("  3. SUDO_ASKPASS=/Users/brandonsandoval/Projects/local-hotspot/bin/sudo-askpass ./bin/hotspot start --apply --confirm ENABLE")
+        print('  2. Optional: SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot firewall remove --apply --confirm FIREWALL_REMOVE')
+        print('  3. SUDO_ASKPASS="$PWD/bin/sudo-askpass" ./bin/hotspot start --apply --confirm ENABLE')
     print("If launchctl fails, run: ./bin/hotspot open-settings and toggle Internet Sharing manually.")
 
 

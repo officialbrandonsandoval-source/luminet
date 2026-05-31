@@ -219,7 +219,10 @@ def load_config():
 
 def save_config(cfg, event="config_updated"):
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2) + "\n")
+    tmp_path = CONFIG_PATH.with_suffix(CONFIG_PATH.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(cfg, indent=2) + "\n")
+    os.chmod(tmp_path, 0o600)
+    tmp_path.replace(CONFIG_PATH)
     os.chmod(CONFIG_PATH, 0o600)
     log_event(event, config_path=str(CONFIG_PATH))
 
@@ -262,6 +265,15 @@ def profile_summary(cfg, name):
         "gateway": profile.get("gateway_hint", "192.168.78.1" if name == "guest" else "192.168.77.1"),
         "enabled": bool(profile.get("enabled", name == "main")),
     }
+
+
+def validate_profile_for_switch(cfg, name):
+    profile = cfg.get(name)
+    if not isinstance(profile, dict):
+        raise SystemExit(f"Cannot switch to {name}: missing '{name}' profile in config/hotspot.json.")
+    missing = [key for key in ("ssid", "subnet", "gateway_hint") if not profile.get(key)]
+    if missing:
+        raise SystemExit(f"Cannot switch to {name}: missing required profile fields: {', '.join(missing)}.")
 
 
 def live_broadcast_summary(cfg, nat=None):
@@ -766,7 +778,7 @@ def write_nat_plist(cfg, apply=False):
     if cfg.get("source_mode") == "loopback":
         ensure_loopback_alias(cfg, apply=True)
     backup = backup_nat_plist()
-    tmp = Path("/tmp/maximus-com.apple.nat.plist")
+    tmp = Path("/tmp/luminet-com.apple.nat.plist")
     with tmp.open("wb") as f:
         plistlib.dump(planned, f)
     run(["/bin/mkdir", "-p", str(NAT_PLIST.parent)], check=True, sudo=True)
@@ -1269,8 +1281,12 @@ def switch_profile(target):
     if target not in ("main", "guest"):
         raise SystemExit("Target must be main or guest.")
     cfg = load_config()
+    validate_profile_for_switch(cfg, target)
     previous = cfg.get("active_network", "main")
-    prev_profile = profile_summary(cfg, previous if previous in ("main", "guest") else "main")
+    if previous not in ("main", "guest"):
+        print(f"WARNING: active_network was invalid ({previous!r}); treating previous profile as main.")
+        previous = "main"
+    prev_profile = profile_summary(cfg, previous)
     target_profile = profile_summary(cfg, target)
     cfg["active_network"] = target
     cfg.setdefault("guest", {})["enabled"] = target == "guest"

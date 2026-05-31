@@ -54,7 +54,7 @@ cd luminet
 
 The installer is conservative by design. It creates local config from the example file, sets permissions, validates syntax, and leaves live networking untouched.
 
-Read the full first-time setup guide: [`docs/getting-started.md`](docs/getting-started.md).
+Read the full first-time setup guide: [`docs/getting-started.md`](docs/getting-started.md). For an honest boundary map, read [`docs/limitations.md`](docs/limitations.md).
 
 ## Screenshots
 

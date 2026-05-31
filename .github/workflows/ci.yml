@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke:
+    name: macOS smoke tests
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests
+        run: |
+          chmod +x tests/smoke.sh bin/install bin/hotspot bin/emergency-network-reset bin/reset-network
+          ./tests/smoke.sh

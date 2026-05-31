@@ -176,7 +176,7 @@ class Handler(BaseHTTPRequestHandler):
     def basic_ok(self):
         cfg = load_config()
         dash = cfg.get("dashboard", {})
-        expected_user = dash.get("username", "maximus")
+        expected_user = dash.get("username", "luminet")
         header = self.headers.get("Authorization", "")
         if not header.startswith("Basic "):
             return False
@@ -320,7 +320,7 @@ class Handler(BaseHTTPRequestHandler):
         dash = cfg.get("dashboard", {})
         username = data.get("username", [""])[0]
         password = data.get("password", [""])[0]
-        expected_user = dash.get("username", "maximus")
+        expected_user = dash.get("username", "luminet")
         ok = username == expected_user and dashboard_password_ok(cfg, password)
         log_auth("form_login", self.client_ip(), username=username, ok=ok, reason="ok" if ok else "bad_credentials")
         if not ok:
